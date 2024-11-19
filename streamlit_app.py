@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 st.title("Healthcare Claims Data Simulator")
 st.sidebar.header("Options")
 
-# Function to Generate Synthetic Healthcare Claims Data
-def generate_large_claims_data(total_records):
+# Function to Generate 762,542 Healthcare Claims Records
+def generate_fixed_claims_data(total_records=762542):
     start_date = datetime(2014, 1, 1)
     end_date = datetime.now()
 
@@ -36,7 +36,7 @@ def generate_large_claims_data(total_records):
         "Patient ID": np.random.randint(4000, 9999, total_records),
         "Gender": np.random.choice(["Male", "Female"], total_records),
         "Age": ages,
-        "Diagnosis Code": [f"D{np.random.randint(100, 999)}" for _ in range(total_records)],
+        "ICD-10": [f"D{np.random.randint(100, 999)}" for _ in range(total_records)],  # Renamed header
         "Procedure Code": [f"P{np.random.randint(1000, 9999)}" for _ in range(total_records)],
         "Amount Billed": np.round(np.random.uniform(100, 5000, total_records), 2),
         "Amount Paid": np.round(np.random.uniform(0, 5000, total_records), 2),
@@ -51,45 +51,40 @@ def generate_large_claims_data(total_records):
 
     return pd.DataFrame(data)
 
-# Options in the Sidebar
-st.sidebar.write("**Dataset Options**")
-generate_data = st.sidebar.checkbox("Generate Dataset", value=False)
-records_to_generate = st.sidebar.slider("Number of Records to Generate", 1000, 1252249, 10000, step=1000)
+# Generate Fixed Dataset
+st.write("Generating dataset with 762,542 records...")
+df = generate_fixed_claims_data()
 
-# Generate or Load Data
-if generate_data:
-    with st.spinner(f"Generating {records_to_generate} records..."):
-        df = generate_large_claims_data(records_to_generate)
-    st.success("Data generation complete!")
-    st.write(f"Generated {records_to_generate} records:")
-    st.dataframe(df.head(100))  # Display first 100 records for performance reasons
-    st.download_button(
-        label="Download Full Dataset",
-        data=df.to_csv(index=False),
-        file_name="healthcare_claims_data.csv",
-        mime="text/csv"
-    )
-else:
-    st.write("Select 'Generate Dataset' from the sidebar to create the data.")
+# Display Dataset and Filters
+st.success(f"Data generated with {len(df)} records.")
 
-# Show Records Based on Filters
+# Date Range Slider
 st.sidebar.header("Filters")
-if 'df' in locals():
-    claim_status_filter = st.sidebar.selectbox("Claim Status", ["All", "Paid", "Denied", "Pending"])
-    provider_id_filter = st.sidebar.text_input("Provider ID (Exact Match)")
-    date_range_filter = st.sidebar.date_input("Claim Date Range", [])
+st.sidebar.write("**Date Range Filter**")
+min_date = datetime(2014, 1, 1)
+max_date = datetime.now()
+selected_dates = st.sidebar.slider(
+    "Select Claim Date Range",
+    min_value=min_date,
+    max_value=max_date,
+    value=(min_date, max_date),
+    format="YYYY-MM-DD"
+)
 
-    filtered_df = df
-    if claim_status_filter != "All":
-        filtered_df = filtered_df[filtered_df["Claim Status"] == claim_status_filter]
-    if provider_id_filter:
-        filtered_df = filtered_df[filtered_df["Provider ID"] == int(provider_id_filter)]
-    if len(date_range_filter) == 2:
-        start_date, end_date = date_range_filter
-        filtered_df = filtered_df[
-            (pd.to_datetime(filtered_df["Claim Date"]) >= pd.to_datetime(start_date)) &
-            (pd.to_datetime(filtered_df["Claim Date"]) <= pd.to_datetime(end_date))
-        ]
-    st.write(f"Filtered Records: {len(filtered_df)}")
-    st.dataframe(filtered_df.head(100))  # Display first 100 filtered records
+# Apply Date Range Filter
+filtered_df = df[
+    (pd.to_datetime(df["Claim Date"]) >= pd.to_datetime(selected_dates[0])) &
+    (pd.to_datetime(df["Claim Date"]) <= pd.to_datetime(selected_dates[1]))
+]
 
+# Display Filtered Results
+st.write(f"Filtered Records: {len(filtered_df)}")
+st.dataframe(filtered_df.head(100))  # Display first 100 records for performance reasons
+
+# Download Option
+st.download_button(
+    label="Download Filtered Dataset",
+    data=filtered_df.to_csv(index=False),
+    file_name="filtered_healthcare_claims_data.csv",
+    mime="text/csv"
+)
