@@ -1,1 +1,6 @@
 streamlit
+pandas
+random
+datetime
+fastapi
+pydantic
