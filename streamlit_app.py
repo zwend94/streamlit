@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import random
+import numpy as np
 from datetime import datetime, timedelta
 
 # Streamlit Setup
@@ -11,37 +11,44 @@ st.sidebar.header("Options")
 def generate_large_claims_data(total_records):
     start_date = datetime(2014, 1, 1)
     end_date = datetime.now()
-    data = []
 
-    for _ in range(total_records):
-        claim_date = start_date + timedelta(days=random.randint(0, (end_date - start_date).days))
-        service_start_date = claim_date - timedelta(days=random.randint(0, 30))
-        service_end_date = service_start_date + timedelta(days=random.randint(1, 10))
-        payment_date = claim_date + timedelta(days=random.randint(1, 60))
-        
-        record = {
-            "Claim ID": f"C{random.randint(1000000, 9999999)}",
-            "Claim Date": claim_date.strftime("%Y-%m-%d"),
-            "Provider ID": random.randint(1000, 9999),
-            "Facility ID": random.randint(2000, 9999),
-            "Payor ID": random.randint(3000, 9999),
-            "Patient ID": random.randint(4000, 9999),
-            "Gender": random.choice(["Male", "Female"]),
-            "Age": random.randint(1, 99),
-            "Diagnosis Code": f"D{random.randint(100, 999)}",
-            "Procedure Code": f"P{random.randint(1000, 9999)}",
-            "Amount Billed": round(random.uniform(100, 5000), 2),
-            "Amount Paid": round(random.uniform(0, 5000), 2),
-            "Claim Status": random.choice(["Paid", "Denied", "Pending"]),
-            "Service Date Start": service_start_date.strftime("%Y-%m-%d"),
-            "Service Date End": service_end_date.strftime("%Y-%m-%d"),
-            "Payment Date": payment_date.strftime("%Y-%m-%d"),
-            "Adjustments": round(random.uniform(0, 500), 2),
-            "Deductibles": round(random.uniform(0, 500), 2),
-            "Co-pays": round(random.uniform(0, 500), 2),
-        }
-        data.append(record)
-    
+    # Generate claim dates uniformly distributed across the range
+    claim_dates = np.random.choice(
+        pd.date_range(start_date, end_date).to_numpy(), 
+        total_records
+    )
+
+    # Generate realistic patient ages
+    ages = np.random.randint(1, 100, total_records)
+
+    # Generate related dates
+    service_start_dates = claim_dates - np.random.randint(0, 30, total_records).astype("timedelta64[D]")
+    service_end_dates = service_start_dates + np.random.randint(1, 10, total_records).astype("timedelta64[D]")
+    payment_dates = claim_dates + np.random.randint(1, 60, total_records).astype("timedelta64[D]")
+
+    # Generate other fields
+    data = {
+        "Claim ID": [f"C{np.random.randint(1000000, 9999999)}" for _ in range(total_records)],
+        "Claim Date": claim_dates.astype(str),
+        "Provider ID": np.random.randint(1000, 9999, total_records),
+        "Facility ID": np.random.randint(2000, 9999, total_records),
+        "Payor ID": np.random.randint(3000, 9999, total_records),
+        "Patient ID": np.random.randint(4000, 9999, total_records),
+        "Gender": np.random.choice(["Male", "Female"], total_records),
+        "Age": ages,
+        "Diagnosis Code": [f"D{np.random.randint(100, 999)}" for _ in range(total_records)],
+        "Procedure Code": [f"P{np.random.randint(1000, 9999)}" for _ in range(total_records)],
+        "Amount Billed": np.round(np.random.uniform(100, 5000, total_records), 2),
+        "Amount Paid": np.round(np.random.uniform(0, 5000, total_records), 2),
+        "Claim Status": np.random.choice(["Paid", "Denied", "Pending"], total_records, p=[0.7, 0.2, 0.1]),
+        "Service Date Start": service_start_dates.astype(str),
+        "Service Date End": service_end_dates.astype(str),
+        "Payment Date": payment_dates.astype(str),
+        "Adjustments": np.round(np.random.uniform(0, 500, total_records), 2),
+        "Deductibles": np.round(np.random.uniform(0, 500, total_records), 2),
+        "Co-pays": np.round(np.random.uniform(0, 500, total_records), 2),
+    }
+
     return pd.DataFrame(data)
 
 # Options in the Sidebar
