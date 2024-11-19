@@ -2,24 +2,25 @@ import streamlit as st
 import pandas as pd
 import random
 from datetime import datetime, timedelta
-from fastapi import FastAPI
-from pydantic import BaseModel
 
 # Streamlit Setup
 st.title("Healthcare Claims Data Simulator")
 st.sidebar.header("Options")
 
-# Generate Synthetic Claims Data
-def generate_claims_data(num_records):
+# Function to Generate Synthetic Healthcare Claims Data
+def generate_large_claims_data(total_records):
+    start_date = datetime(2014, 1, 1)
+    end_date = datetime.now()
     data = []
-    for _ in range(num_records):
-        claim_date = datetime.now() - timedelta(days=random.randint(0, 365))
+
+    for _ in range(total_records):
+        claim_date = start_date + timedelta(days=random.randint(0, (end_date - start_date).days))
         service_start_date = claim_date - timedelta(days=random.randint(0, 30))
-        service_end_date = service_start_date + timedelta(days=random.randint(0, 10))
+        service_end_date = service_start_date + timedelta(days=random.randint(1, 10))
         payment_date = claim_date + timedelta(days=random.randint(1, 60))
         
         record = {
-            "Claim ID": f"C{random.randint(100000, 999999)}",
+            "Claim ID": f"C{random.randint(1000000, 9999999)}",
             "Claim Date": claim_date.strftime("%Y-%m-%d"),
             "Provider ID": random.randint(1000, 9999),
             "Facility ID": random.randint(2000, 9999),
@@ -40,44 +41,48 @@ def generate_claims_data(num_records):
             "Co-pays": round(random.uniform(0, 500), 2),
         }
         data.append(record)
+    
     return pd.DataFrame(data)
 
-# Input Options
-mode = st.sidebar.selectbox("Mode", ["Upload Data", "Generate Data"])
-if mode == "Upload Data":
-    uploaded_file = st.file_uploader("Upload Claims Data File (CSV/JSON)", type=["csv", "json"])
-    if uploaded_file:
-        if uploaded_file.name.endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_json(uploaded_file)
-        st.write("Uploaded Data Preview:")
-        st.dataframe(df)
+# Options in the Sidebar
+st.sidebar.write("**Dataset Options**")
+generate_data = st.sidebar.checkbox("Generate Dataset", value=False)
+records_to_generate = st.sidebar.slider("Number of Records to Generate", 1000, 1252249, 10000, step=1000)
+
+# Generate or Load Data
+if generate_data:
+    with st.spinner(f"Generating {records_to_generate} records..."):
+        df = generate_large_claims_data(records_to_generate)
+    st.success("Data generation complete!")
+    st.write(f"Generated {records_to_generate} records:")
+    st.dataframe(df.head(100))  # Display first 100 records for performance reasons
+    st.download_button(
+        label="Download Full Dataset",
+        data=df.to_csv(index=False),
+        file_name="healthcare_claims_data.csv",
+        mime="text/csv"
+    )
 else:
-    num_records = st.sidebar.slider("Number of Records to Generate", 10, 500, 50)
-    df = generate_claims_data(num_records)
-    st.write("Generated Data Preview:")
-    st.dataframe(df)
+    st.write("Select 'Generate Dataset' from the sidebar to create the data.")
 
-# API Simulation
-st.sidebar.header("API Simulation")
-api_enabled = st.sidebar.checkbox("Enable API")
+# Show Records Based on Filters
+st.sidebar.header("Filters")
+if 'df' in locals():
+    claim_status_filter = st.sidebar.selectbox("Claim Status", ["All", "Paid", "Denied", "Pending"])
+    provider_id_filter = st.sidebar.text_input("Provider ID (Exact Match)")
+    date_range_filter = st.sidebar.date_input("Claim Date Range", [])
 
-if api_enabled:
-    st.write("Simulated API Endpoint: `/get_claims_data`")
+    filtered_df = df
+    if claim_status_filter != "All":
+        filtered_df = filtered_df[filtered_df["Claim Status"] == claim_status_filter]
+    if provider_id_filter:
+        filtered_df = filtered_df[filtered_df["Provider ID"] == int(provider_id_filter)]
+    if len(date_range_filter) == 2:
+        start_date, end_date = date_range_filter
+        filtered_df = filtered_df[
+            (pd.to_datetime(filtered_df["Claim Date"]) >= pd.to_datetime(start_date)) &
+            (pd.to_datetime(filtered_df["Claim Date"]) <= pd.to_datetime(end_date))
+        ]
+    st.write(f"Filtered Records: {len(filtered_df)}")
+    st.dataframe(filtered_df.head(100))  # Display first 100 filtered records
 
-    # Mock API using FastAPI
-    app = FastAPI()
-
-    class ClaimRequest(BaseModel):
-        filters: dict = None
-
-    @app.get("/get_claims_data")
-    async def get_claims_data(filters: dict = None):
-        # Apply filters to the claims data
-        filtered_df = df
-        if filters:
-            for column, value in filters.items():
-                if column in df.columns:
-                    filtered_df = filtered_df[filtered_df[column] == value]
-        return filtered_df.to_dict(orient="records")
