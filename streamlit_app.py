@@ -22,8 +22,8 @@ private_payors = [
     "WellCare"
 ]
 
-def generate_fixed_claims_data(total_records=1200000):
-    start_date = datetime(2019, 1, 1)
+def generate_fixed_claims_data(total_records=377000):
+    start_date = datetime(2019, 1, 1)  # Updated start date
     end_date = datetime.now()
 
     # Generate claim dates uniformly distributed across the range
@@ -37,12 +37,12 @@ def generate_fixed_claims_data(total_records=1200000):
     service_end_dates = service_start_dates + np.random.randint(1, 10, total_records).astype("timedelta64[D]")
     payment_dates = claim_dates + np.random.randint(1, 60, total_records).astype("timedelta64[D]")
 
-    # 30% gov payors, 70% private
+    # Split data into two groups: 30% gov payors (Medicare/Medicaid), 70% private payors
     gov_count = int(total_records * 0.3)
     private_count = total_records - gov_count
 
-    # Assign government payors (50% Medicare, 50% Medicaid of the 30%)
-    gov_payor_names = np.random.choice(gov_payors, gov_count, p=[0.5, 0.5])
+    # Assign government payors
+    gov_payor_names = np.random.choice(gov_payors, gov_count, p=[0.5, 0.5])  # 50% Medicare, 50% Medicaid
     # Assign fixed payor IDs for government payors
     gov_payor_ids = np.where(gov_payor_names == "Medicare", "0000000001", "0000000002")
 
@@ -55,7 +55,7 @@ def generate_fixed_claims_data(total_records=1200000):
     payor_names = np.concatenate([gov_payor_names, private_payor_names])
     payor_ids = np.concatenate([gov_payor_ids, private_payor_ids])
 
-    # Shuffle the arrays to ensure uniform distribution
+    # Shuffle the arrays to ensure a uniform distribution throughout the dataset
     idx = np.arange(total_records)
     np.random.shuffle(idx)
 
@@ -93,7 +93,7 @@ def generate_fixed_claims_data(total_records=1200000):
     return pd.DataFrame(data)
 
 # Generate Fixed Dataset
-st.write("Generating dataset with approximately 1,200,000 records...")
+st.write("Generating dataset with ~377,000 records...")
 df = generate_fixed_claims_data()
 
 # Display Dataset and Filters
@@ -120,7 +120,7 @@ filtered_df = df[
 
 # Display Filtered Results
 st.write(f"Filtered Records: {len(filtered_df)}")
-st.dataframe(filtered_df.head(100))  # Display first 100 records for performance
+st.dataframe(filtered_df.head(100))  # Display first 100 records for performance reasons
 
 # Download Option
 st.download_button(
